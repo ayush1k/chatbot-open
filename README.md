@@ -5,8 +5,9 @@ A simple Streamlit chatbot UI that connects to OpenRouter using the OpenAI Pytho
 ## What this app does
 
 - Starts a local chat interface in Streamlit
-- Lets you paste your OpenRouter API key in the sidebar
-- Sends your messages to the selected OpenRouter model
+- Shows a setup screen first to enter your OpenRouter API key and model ID
+- Opens the chat page after setup, with quick controls to change credentials and clear chat
+- Sends your messages to the configured OpenRouter model
 - Streams model responses in real time
 
 ## Prerequisites
@@ -44,9 +45,12 @@ Then open the local URL shown in your terminal (usually http://localhost:8501).
 
 ## How to use
 
-1. In the app sidebar, paste your OpenRouter API key.
-2. Keep or change the selected model.
-3. Type a message in the chat box and press Enter.
+1. Launch the app and enter your OpenRouter API key.
+2. Enter the OpenRouter model ID you want to use (for example, `nvidia/nemotron-3-super-120b-a12b:free`).
+3. Click **Start Chat** to open the chat page.
+4. Type a message in the chat box and press Enter.
+5. Use **Change API Key / Model ID** in the sidebar whenever you want to update credentials.
+6. Use **Clear Chat** in the sidebar to reset conversation history.
 
 ## Troubleshooting
 
@@ -56,4 +60,4 @@ Then open the local URL shown in your terminal (usually http://localhost:8501).
 source .venv/bin/activate
 ```
 
-- If you get API errors, confirm your OpenRouter key is valid and has access to the selected model.
+- If you get API errors, confirm your OpenRouter key is valid and has access to the model ID you entered.
