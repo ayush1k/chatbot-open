@@ -13,7 +13,7 @@ if "messages" not in st.session_state:
 if "api_key" not in st.session_state:
     st.session_state.api_key = ""
 if "selected_model" not in st.session_state:
-    st.session_state.selected_model = "nvidia/nemotron-3-super-120b-a12b:free"
+    st.session_state.selected_model = "google/gemma-3n-e2b-it:free"
 if "is_configured" not in st.session_state:
     st.session_state.is_configured = False
 
