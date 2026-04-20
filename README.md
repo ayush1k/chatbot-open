@@ -43,6 +43,22 @@ streamlit run main.py
 
 Then open the local URL shown in your terminal (usually http://localhost:8501).
 
+## Run with Docker
+
+Build the image from the project root:
+
+```bash
+docker build -t chatbot-open .
+```
+
+Run the container and expose Streamlit on port 8501:
+
+```bash
+docker run --rm -p 8501:8501 chatbot-open
+```
+
+Then open http://localhost:8501 in your browser.
+
 ## How to use
 
 1. Launch the app and enter your OpenRouter API key.
