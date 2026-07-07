@@ -13,9 +13,13 @@ if "messages" not in st.session_state:
 if "api_key" not in st.session_state:
     st.session_state.api_key = ""
 if "selected_model" not in st.session_state:
-    st.session_state.selected_model = "google/gemma-3n-e2b-it:free"
+    st.session_state.selected_model = "nvidia/nemotron-3-ultra-550b-a55b:free"
 if "is_configured" not in st.session_state:
     st.session_state.is_configured = False
+if "chat_summary" not in st.session_state:
+    st.session_state.chat_summary = ""
+if "readme_context" not in st.session_state:
+    st.session_state.readme_context = ""
 
 # 3. Credentials Screen (shown first)
 if not st.session_state.is_configured:
@@ -62,7 +66,18 @@ with st.sidebar:
 
     if st.button("Clear Chat", use_container_width=True):
         st.session_state.messages = []
+        st.session_state.chat_summary = ""
         st.rerun()
+
+    st.subheader("Context")
+    # Text area for README context
+    readme_input = st.text_area(
+        "Project README Context",
+        value=st.session_state.readme_context,
+        height=200,
+        help="Paste the project's README here to provide context to the chatbot."
+    )
+    st.session_state.readme_context = readme_input
 
     st.markdown("[Find more model IDs on OpenRouter](https://openrouter.ai/models)")
 
@@ -85,6 +100,18 @@ if prompt := st.chat_input("What's on your mind?"):
         api_key=st.session_state.api_key,
     )
 
+    # Construct the dynamic payload combining readme_context and chat_summary
+    system_parts = []
+    if st.session_state.readme_context:
+        system_parts.append(f"Project README context:\n{st.session_state.readme_context}")
+    if st.session_state.chat_summary:
+        system_parts.append(f"Summary of previous conversation:\n{st.session_state.chat_summary}")
+
+    system_instruction = "\n\n".join(system_parts) if system_parts else "You are a helpful assistant."
+
+    payload = [{"role": "system", "content": system_instruction}]
+    payload.extend(st.session_state.messages)
+
     with st.chat_message("assistant"):
         # We use a placeholder to stream the text chunk by chunk
         message_placeholder = st.empty()
@@ -94,7 +121,7 @@ if prompt := st.chat_input("What's on your mind?"):
             # Create the API call with streaming enabled
             stream = client.chat.completions.create(
                 model=st.session_state.selected_model,
-                messages=st.session_state.messages,
+                messages=payload,
                 stream=True, 
             )
             
@@ -113,3 +140,39 @@ if prompt := st.chat_input("What's on your mind?"):
 
     # 8. Save Assistant Response to History
     st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+    # 9. Sliding Window & Summarization Logic
+    MAX_MESSAGES = 10
+    if len(st.session_state.messages) > MAX_MESSAGES:
+        # Extract the oldest user-assistant message pair
+        evicted_pair = st.session_state.messages[:2]
+        
+        try:
+            # Background API call to OpenRouter (non-streaming, hidden from UI)
+            current_summary = st.session_state.chat_summary if st.session_state.chat_summary else "(No summary yet)"
+            summary_prompt = (
+                "You are a technical assistant tasked with maintaining a running summary of a chat conversation.\n\n"
+                f"Existing Conversation Summary:\n{current_summary}\n\n"
+                "Newly evicted user-assistant message pair to incorporate:\n"
+                f"User: {evicted_pair[0]['content']}\n"
+                f"Assistant: {evicted_pair[1]['content']}\n\n"
+                "Generate a concise, updated technical summary of the conversation based on the existing summary and the new message pair. "
+                "Do not include any conversational filler; return ONLY the updated summary."
+            )
+            
+            summary_response = client.chat.completions.create(
+                model=st.session_state.selected_model,
+                messages=[
+                    {"role": "user", "content": summary_prompt}
+                ],
+                stream=False
+            )
+            new_summary = summary_response.choices[0].message.content.strip()
+            st.session_state.chat_summary = new_summary
+        except Exception as summary_err:
+            # Log error to stderr/print, keeping it completely hidden from UI
+            print(f"Error generating summary: {summary_err}")
+        
+        # Remove the evicted pair from the main st.session_state.messages list
+        st.session_state.messages = st.session_state.messages[2:]
+        st.rerun()
